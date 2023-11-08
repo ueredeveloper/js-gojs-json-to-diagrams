@@ -1,0 +1,166 @@
+
+  <!DOCTYPE html>
+  <html lang="en">
+  <body>
+  <script src="https://unpkg.com/gojs@2.3.11/release/go.js"></script>
+
+  <div id="allSampleContent" class="p-4 w-full">
+    <script id="code">
+    function init() {
+
+      // Since 2.2 you can also author concise templates with method chaining instead of GraphObject.make
+      // For details, see https://gojs.net/latest/intro/buildingObjects.html
+      const $ = go.GraphObject.make;
+
+      myDiagram =
+        new go.Diagram("myDiagramDiv", // the ID of the DIV HTML element
+          {
+            layout: $(go.ForceDirectedLayout),
+            "undoManager.isEnabled": true
+          });
+
+      myDiagram.nodeTemplate =
+        $(go.Node, go.Panel.Auto,
+          { locationSpot: go.Spot.Center },
+          $(go.Shape,
+            {
+              figure: "RoundedRectangle",
+              parameter1: 10,
+              fill: "orange",  // default fill color
+              portId: "",
+              fromLinkable: true,
+              fromSpot: go.Spot.AllSides,
+              toLinkable: true,
+              toSpot: go.Spot.AllSides,
+              cursor: "pointer"
+            },
+            new go.Binding("fill", "color")),
+          $(go.TextBlock,
+            { margin: 10, font: "bold 12pt sans-serif" },
+            new go.Binding("text"))
+        );
+
+      myDiagram.linkTemplate =
+        $(MultiArrowLink,  // subclass of Link, defined below
+          {
+            relinkableFrom: true,
+            relinkableTo: true,
+            reshapable: true,
+            resegmentable: true
+          },
+          $(go.Shape,
+            { isPanelMain: true },
+            new go.Binding("fill", "color"))
+          // no arrowhead is defined here -- they are hard-coded in MultiArrowLink.makeGeometry
+        );
+		// Tabela Tipo de Documento (DocumentoTipo)
+		let documento_tipo = {dt_id: 1, dt_descricao: "Requerimento"}
+		//documento_tipo = {...documento_tipo, tableName: Object.keys({documento_tipo})[0].toLowerCase()}
+		// Tabela Endereço
+		let endereco = {end_id: 1, end_logradouro: "Rua dos Feijões"}
+		//endereco = {...endereco, tableName: Object.keys({endereco})[0].toLowerCase()}
+		// Tabela Documento
+		let documento = {
+			doc_id: 1, 
+			doc_numero: 123456,
+			doc_tipo: documento_tipo,
+			doc_endereco: endereco
+
+		}
+		// Adiciona nome da tabela
+		//let docPropNames = Object.keys({documento});
+		//documento = {...documento, tableName: Object.keys({documento})[0].toLowerCase()}
+		
+		// Verifica se há tipo de documento relacionado com documento
+		function showDocType (documento){
+			if (documento.doc_tipo!==null){
+				return { key: 2, text: documento.doc_tipo.dt_descricao, color: "orange" };
+			}
+			return { key: 2, text: "Sem Tipo de Documento Relacionado", color: "red" }; 
+		
+		}
+		// Verifica se há tipo de documento relacionado com documento
+		function showAdrress (documento){
+			if (documento.doc_endereco!==null){
+				return { key: 3, text: documento.doc_endereco.end_logradouro, color: "pink" };
+			}
+			return { key: 3, text: "Sem Endereço Relacionado", color: "red" }; 
+		
+		}
+      // create a few nodes and links
+      myDiagram.model = new go.GraphLinksModel([
+        { key: 1, text: documento.doc_numero, color: "lightyellow" },
+		showDocType(documento),
+		showAdrress(documento)
+      ], [
+          
+          { from: 1, to: 2, color: "red" },
+		  { from: 1, to: 3, color: "red" },
+          
+        ]);
+    }
+
+
+  // Produce a Geometry that includes an arrowhead at the end of each segment.
+  // This only works with orthogonal non-Bezier routing.
+  class MultiArrowLink extends go.Link {
+    constructor() {
+      super();
+      this.routing = go.Link.Orthogonal;
+    }
+
+    // produce a Geometry from the Link's route
+    makeGeometry() {
+      // get the Geometry created by the standard behavior
+      const geo = super.makeGeometry();
+      if (geo.type !== go.Geometry.Path || geo.figures.length === 0) return geo;
+      const mainfig = geo.figures.elt(0);  // assume there's just one PathFigure
+      const mainsegs = mainfig.segments;
+
+      const arrowLen = 8;  // length for each arrowhead
+      const arrowWid = 3;  // actually half-width of each arrowhead
+      let fx = mainfig.startX;
+      let fy = mainfig.startY;
+      for (let i = 0; i < mainsegs.length; i++) {
+        const a = mainsegs.elt(i);
+        // assume each arrowhead is a simple triangle
+        const ax = a.endX;
+        const ay = a.endY;
+        let bx = ax;
+        let by = ay;
+        let cx = ax;
+        let cy = ay;
+        if (fx < ax - arrowLen) {
+          bx -= arrowLen; by += arrowWid;
+          cx -= arrowLen; cy -= arrowWid;
+        } else if (fx > ax + arrowLen) {
+          bx += arrowLen; by += arrowWid;
+          cx += arrowLen; cy -= arrowWid;
+        } else if (fy < ay - arrowLen) {
+          bx -= arrowWid; by -= arrowLen;
+          cx += arrowWid; cy -= arrowLen;
+        } else if (fy > ay + arrowLen) {
+          bx -= arrowWid; by += arrowLen;
+          cx += arrowWid; cy += arrowLen;
+        }
+        geo.add(new go.PathFigure(ax, ay, true)
+          .add(new go.PathSegment(go.PathSegment.Line, bx, by))
+          .add(new go.PathSegment(go.PathSegment.Line, cx, cy).close()));
+        fx = ax;
+        fy = ay;
+      }
+
+      return geo;
+    }
+  }
+  // end of MultiArrowLink class
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+
+<div id="sample">
+  <div id="myDiagramDiv" style="border: 1px solid black; width: 100%; height: 700px; min-width: 200px; position: relative; -webkit-tap-highlight-color: rgba(255, 255, 255, 0);"><canvas tabindex="0" width="1317" height="872" style="position: absolute; top: 0px; left: 0px; z-index: 2; user-select: none; touch-action: none; width: 1054px; height: 698px;"></canvas><div style="position: absolute; overflow: auto; width: 1054px; height: 698px; z-index: 1;"><div style="position: absolute; width: 1px; height: 1px;"></div></div></div>
+  
+<p class="text-xs">GoJS version 2.3.11. Copyright 1998-2023 by Northwoods Software.</p></div>
+     </body>
+  </html>
