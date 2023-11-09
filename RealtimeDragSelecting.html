@@ -123,7 +123,7 @@ treedata.push({...convertedDocTipo, key: 2, text: documento.doc_tipo.dt_descrica
 var convertedDocEndereco = convertDocumentoToGoJSFormat(documento.doc_endereco, parentKey);
 console.log(convertedDocEndereco);
 	treedata.push({...convertedDocEndereco, key: 3, text: documento.doc_endereco.end_logradouro})
-	
+	console.log(treedata)
     return new go.TreeModel(treedata);
   }
   window.addEventListener('DOMContentLoaded', init);
